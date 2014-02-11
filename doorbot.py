@@ -38,7 +38,6 @@ class Doorbot(object):
 		self._state = state
 
 	def denied(self):
-		log.info("Authentication failed")
 		self._door_io.denied()
 		self.await_rfid()
 
@@ -53,6 +52,7 @@ class Doorbot(object):
 					log.debug("rfid = %s", user_data['rfid'])
 					self.do_open()
 				else:
+					log.info("Authentication failed")
 					self.denied()
 
 		elif self._state == PINCHANGE_OLD:
@@ -199,7 +199,7 @@ class Doorbot(object):
 	def add_key_command(self, rfid=None, pin=None):
 		self.add_key()
 		if rfid:
-			rfid = ''.join(c for c in rfid if c in '01'
+			rfid = ''.join(c for c in rfid if c in '01')
 			self.rfid_scanned( rfid )
 		if pin:
 			pin = ''.join(c for c in pin if c in '0123456789' )
@@ -230,7 +230,7 @@ class Doorbot(object):
 		if command == 'openmode':
 			self.open_mode()
 		if command == 'authmode':
-			self.await_rfid()
+			self.relock()
 		if command == 'show':
 			self.print_users(out)
 		if command == 'resetpin':
