@@ -11,6 +11,7 @@ class DoorIO(object):
 		self._lock    = lock_serial
 		self._cmd_in  = cmd_in
 		self._cmd_out = cmd_out
+		self._led_state = "LED OFF"
 
 	def lock(self):
 		self._lock.write('LOCK\n')
@@ -27,14 +28,20 @@ class DoorIO(object):
 	def granted(self):
 		self._auth.write('GRANTED\n')
 
+	def update_led(self):
+		self._auth.write(self._led_state)
+
 	def led_on(self):
-		self._auth.write('LED ON\n')
+		self._led_state = 'LED ON\n'
+		self.update_led()
 
 	def led_off(self):
-		self._auth.write('LED OFF\n')
+		self._led_state = 'LED OFF\n'
+		self.update_led()
 
 	def led_blink(self):
-		self._auth.write('LED BLINK\n')
+		self._led_state = 'LED BLINK\n'
+		self.update_led()
 
 	def get_event(self, timeout=None):
 		waitlist = [ f.fileno() for f in (self._auth, self._lock, self._cmd_in) ]
@@ -60,6 +67,9 @@ class DoorIO(object):
 				code = line.strip("RFID ")
 				if re.match("^[01]{34}$", code):
 					return { 'type': 'rfid', 'value': code }
+
+			if line == 'RESET':
+				self.update_led()
 
 		if self._cmd_in.fileno() in r:
 			return {
