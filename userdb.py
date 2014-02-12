@@ -17,14 +17,12 @@ def verify_hash(pin_hash, pin):
         return False
 
 USER_FIELDS = [
-	'id',
 	'rfid',
 	'hash',
 	'authorised',
 ]
 
 USER_TYPES = {
-	'id': int,
 	'rfid': str,
 	'hash': str,
 	'authorised': int
@@ -36,15 +34,15 @@ def user_dict(row):
 def init_db(conn):
 	c = conn.cursor()
 	c.execute('''CREATE TABLE users '''+\
-	          '''(id integer primary key, text, rfid text, hash text, authorised integer)''')
+	          '''(rfid text unique, hash text, authorised integer)''')
 	conn.commit()
 
 def verify_login(conn, rfid, pin):
 	c = conn.cursor()
-	c.execute('''SELECT id, rfid, hash, authorised FROM users WHERE rfid=?''', (rfid,) )
+	c.execute('''SELECT rfid, hash, authorised FROM users WHERE rfid=?''', (rfid,) )
 	for row in c.fetchall():
-		pin_hash = row[2]
-		if verify_hash(pin_hash, pin) and row[3]:
+		pin_hash = row[1]
+		if verify_hash(pin_hash, pin) and row[2]:
 			return user_dict(row)
 	else:
 		return None
@@ -71,7 +69,7 @@ def find_users(conn, user):
 		where_clause = 'WHERE ' + keys
 
 	c = conn.cursor()
-	c.execute('''SELECT id, rfid, hash, authorised FROM users '''+where_clause, values )
+	c.execute('''SELECT rfid, hash, authorised FROM users '''+where_clause, values )
 	return [ user_dict(row) for row in c ]
 
 def get_users(conn):

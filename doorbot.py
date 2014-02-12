@@ -253,7 +253,7 @@ class Doorbot(object):
 
 	def print_users(self, out):
 		for row in userdb.get_users(self._dbconn):
-			out.write('{id} {rfid} {authorised}\n'.format(**row))
+			out.write('{rfid} {authorised}\n'.format(**row))
 
 	def execute_command(self, cmd, out):
 		if cmd == '':
@@ -266,14 +266,8 @@ class Doorbot(object):
 		if command == 'addkey':
 			self.add_key_command(*args[1:3])
 		if command == 'delkey':
-			if len(args) >= 3:
-				if args[1] == 'rfid':
-					userdb.del_user(self._dbconn, {'rfid':args[1]})
-				elif command == 'id':
-					try:
-						userdb.del_user(self._dbconn, {'id':int(args[1])})
-					except ValueError:
-						log.error("bad id")
+			if len(args) >= 2:
+				userdb.del_user(self._dbconn, {'rfid':args[1]})
 		if command == 'openmode':
 			self.open_mode()
 		if command == 'authmode':
