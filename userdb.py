@@ -40,10 +40,23 @@ def init_db(conn):
 def verify_login(conn, rfid, pin):
 	c = conn.cursor()
 	c.execute('''SELECT rfid, hash, authorised FROM users WHERE rfid=?''', (rfid,) )
-	for row in c.fetchall():
-		pin_hash = row[1]
-		if verify_hash(pin_hash, pin) and row[2]:
-			return user_dict(row)
+	result = c.fetchall()
+
+	# prevent infoleak :-)
+	c.execute('''SELECT rfid, hash, authorised FROM users LIMIT 1''', (rfid,) )
+	result_fake = c.fetchall()
+
+	if len(result) > 0:
+		pin_hash = result[0][1]
+		authorised = result[0][2]
+	elif len(result_fake) > 0:
+		pin_hash = result_fake[0][1]
+		authorised = 0
+	else:
+		return None
+
+	if verify_hash(pin_hash, pin) and authorised:
+		return user_dict(row)
 	else:
 		return None
 
