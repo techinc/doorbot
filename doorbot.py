@@ -211,7 +211,7 @@ class Doorbot(object):
 			self._rfid = code
 			self.await_pin()
 		elif self._state == ADD_KEY:
-			if not userdb.user_exists(self._dbconn, {'rfid':code}):
+			if not userdb.user_exists(self._dbconn, code):
 				self._rfid = code
 				self.add_key_pin_new()
 			else:
@@ -267,7 +267,7 @@ class Doorbot(object):
 			self.add_key_command(*args[1:3])
 		if command == 'delkey':
 			if len(args) >= 2:
-				userdb.del_user(self._dbconn, {'rfid':args[1]})
+				userdb.del_user(self._dbconn, args[1])
 		if command == 'openmode':
 			self.open_mode()
 		if command == 'authmode':
@@ -293,7 +293,7 @@ class Doorbot(object):
 					self.timeout()
 
 			t = event['type']
-			value = event['value']
+			value = event.get('value', '')
 
 			if t == 'doorstate':
 				if value == 'OPEN':

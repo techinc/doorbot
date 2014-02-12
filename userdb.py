@@ -72,31 +72,35 @@ def update_pin(conn, rfid, pin):
 	          (create_hash(pin), rfid) )
 	conn.commit()
 
-def find_users(conn, user):
-	fields = [ (k,v,USER_TYPES[k]) for k,v in user.iteritems() if k in USER_FIELDS ]
-	values = tuple( t(v) for k,v,t in fields )
-	keys = ' AND '.join( k+'=?' for k,v,t in fields )
-
-	where_clause = ''
-	if keys != '':
-		where_clause = 'WHERE ' + keys
-
+def enable(conn, rfid, pin):
 	c = conn.cursor()
-	c.execute('''SELECT rfid, hash, authorised FROM users '''+where_clause, values )
-	return [ user_dict(row) for row in c ]
+	c.execute('''UPDATE users SET authorised=1 WHERE rfid=?''', (rfid,))
+	conn.commit()
+
+def disable(conn, rfid, pin):
+	c = conn.cursor()
+	c.execute('''UPDATE users SET authorised=0 WHERE rfid=?''', (rfid,))
+	conn.commit()
+
+def find_user(conn, rfid):
+	c = conn.cursor()
+	c.execute('''SELECT rfid, hash, authorised FROM users WHERE rfid=?''', (rfid,) )
+	result = c.fetchall()
+	if len(result) > 0:
+		return user_dict(result[0])
+	else:
+		return None
 
 def get_users(conn):
-	return find_users(conn, {})
+	c = conn.cursor()
+	c.execute('''SELECT rfid, hash, authorised FROM users''', (rfid,) )
+	return [ user_dict(row) for row in c ]
 
-def user_exists(conn, user):
-	return len(find_users(conn, user)) > 0
+def user_exists(conn, rfid):
+	return find_users(conn, rfid) != None
 
-def del_user(conn, user):
-	fields = [ (k,v,USER_TYPES[k]) for k,v in user.iteritems() if k in USER_FIELDS ]
-	values = tuple( t(v) for k,v,t in fields )
-	keys = ' AND '.join( k+'=?' for k,v,t in fields )
-	if keys != '':
-		c = conn.cursor()
-		c.execute('''DELETE FROM users WHERE '''+keys, values )
-		conn.commit()
+def del_user(conn, rfid):
+	c = conn.cursor()
+	c.execute('''DELETE FROM users WHERE rfid=?''', (rfid,) )
+	conn.commit()
 
