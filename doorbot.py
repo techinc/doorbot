@@ -7,19 +7,21 @@ import userdb
 
 log = logging.getLogger("doorbot")
 
-AWAIT_RFID, AWAIT_PIN, OPEN, RELOCK, ADD_KEY, RESET_PIN, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY, OPEN_MODE = range(10)
+AWAIT_RFID, AWAIT_PIN, OPEN, RELOCK, ADD_KEY, ADD_KEY_PIN_NEW, ADD_KEY_PIN_VERIFY, RESET_PIN, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY, OPEN_MODE = range(12)
 
 statenames = {
-	AWAIT_RFID       : 'AWAIT_RFID',
-	AWAIT_PIN        : 'AWAIT_PIN',
-	OPEN             : 'OPEN',
-	RELOCK           : 'RELOCK',
-	ADD_KEY          : 'ADD_KEY',
-	RESET_PIN        : 'RESET_PIN',
-	PINCHANGE_OLD    : 'PINCHANGE_OLD',
-	PINCHANGE_NEW    : 'PINCHANGE_NEW',
-	PINCHANGE_VERIFY : 'PINCHANGE_VERIFY',
-	OPEN_MODE        : 'OPEN_MODE',
+	AWAIT_RFID          : 'AWAIT_RFID',
+	AWAIT_PIN           : 'AWAIT_PIN',
+	OPEN                : 'OPEN',
+	RELOCK              : 'RELOCK',
+	ADD_KEY             : 'ADD_KEY',
+	ADD_KEY_PIN_NEW     : 'ADD_KEY_PIN_NEW',
+	ADD_KEY_PIN_VERIFY  : 'ADD_KEY_PIN_VERIFY',
+	RESET_PIN           : 'RESET_PIN',
+	PINCHANGE_OLD       : 'PINCHANGE_OLD',
+	PINCHANGE_NEW       : 'PINCHANGE_NEW',
+	PINCHANGE_VERIFY    : 'PINCHANGE_VERIFY',
+	OPEN_MODE           : 'OPEN_MODE',
 }
 
 PIN_TIMEOUT = 15
@@ -61,6 +63,19 @@ class Doorbot(object):
 		self.set_state(ADD_KEY)
 		self._timeout = PIN_TIMEOUT
 		self._rfid = ''
+		self._door_io.led_blink()
+
+	def add_key_pin_new(self):
+		self.set_state(ADD_KEY_PIN_NEW)
+		self._timeout = PIN_TIMEOUT
+		self._pin = ''
+		self._door_io.led_blink()
+
+	def add_key_pin_verify(self):
+		self.set_state(ADD_KEY_PIN_VERIFY)
+		self._timeout = PIN_TIMEOUT
+		self._orig_pin = self._pin
+		self._pin = ''
 		self._door_io.led_blink()
 
 	def reset_pin(self):
@@ -152,6 +167,21 @@ class Doorbot(object):
 			else:
 				self.denied()
 
+		elif self._state == ADD_KEY_PIN_NEW:
+			if len(self._pin) >= 4:
+				self.add_key_pin_verify()
+			else:
+				self.denied()
+
+		elif self._state == ADD_KEY_PIN_VERIFY:
+			if self._pin == self._orig_pin:
+				log.info("Adding key")
+				userdb.add_user(self._dbconn, self._rfid, self._pin, 1)
+				self.await_rfid()
+				self._door_io.granted()
+			else:
+				self.denied()
+
 	def key_pressed(self, c):
 		log.debug("key pressed: %s", c)
 		if self._state == OPEN_MODE:
@@ -159,7 +189,7 @@ class Doorbot(object):
 				self._door_io.beep()
 				self._door_io.unlock()
 
-		elif self._state in (AWAIT_PIN, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY):
+		elif self._state in (AWAIT_PIN, ADD_KEY_PIN_NEW, ADD_KEY_PIN_VERIFY, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY):
 			self._timeout = PIN_TIMEOUT
 			if c in "0123456789CB":
 				self._door_io.beep()
@@ -175,23 +205,21 @@ class Doorbot(object):
 		if self._state == RELOCK:
 			self.await_rfid()
 
+		log.debug("rfid code: %s", code)
+
 		if self._state == AWAIT_RFID:
-			log.debug("rfid code: %s", code)
 			self._rfid = code
 			self.await_pin()
 		elif self._state == ADD_KEY:
-			log.debug("rfid code: %s", code)
 			self._rfid = code
-			userdb.add_user(self._dbconn, self._rfid, "<nopin>", 1)
-			self.pinchange_new()
+			self.add_key_pin_new()
 		elif self._state == RESET_PIN:
-			log.debug("rfid code: %s", code)
 			self._rfid = code
 			self.pinchange_new()
 
 	def timeout(self):
 		log.debug("timeout")
-		if self._state in (AWAIT_PIN, RELOCK, ADD_KEY, RESET_PIN, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY):
+		if self._state in (AWAIT_PIN, RELOCK, ADD_KEY, RESET_PIN, ADD_KEY_PIN_NEW, ADD_KEY_PIN_VERIFY, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY):
 			self.await_rfid()
 		if self._state == OPEN:
 			self.relock()
