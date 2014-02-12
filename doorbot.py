@@ -211,8 +211,11 @@ class Doorbot(object):
 			self._rfid = code
 			self.await_pin()
 		elif self._state == ADD_KEY:
-			self._rfid = code
-			self.add_key_pin_new()
+			if not userdb.user_exists(self._dbconn, {'rfid':code}):
+				self._rfid = code
+				self.add_key_pin_new()
+			else:
+				self.denied()
 		elif self._state == RESET_PIN:
 			self._rfid = code
 			self.pinchange_new()

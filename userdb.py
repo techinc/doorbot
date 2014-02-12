@@ -39,11 +39,6 @@ def init_db(conn):
 	          '''(id integer primary key, text, rfid text, hash text, authorised integer)''')
 	conn.commit()
 
-def get_users(conn):
-	c = conn.cursor()
-	c.execute('''SELECT id, rfid, hash, authorised FROM users''')
-	return [ user_dict(row) for row in c ]
-
 def verify_login(conn, rfid, pin):
 	c = conn.cursor()
 	c.execute('''SELECT id, rfid, hash, authorised FROM users WHERE rfid=?''', (rfid,) )
@@ -65,7 +60,26 @@ def update_pin(conn, rfid, pin):
 	c.execute('''UPDATE users SET hash=? WHERE rfid=?''',
 	          (create_hash(pin), rfid) )
 	conn.commit()
-	
+
+def find_users(conn, user):
+	fields = [ (k,v,USER_TYPES[k]) for k,v in user.iteritems() if k in USER_FIELDS ]
+	values = tuple( t(v) for k,v,t in fields )
+	keys = ' AND '.join( k+'=?' for k,v,t in fields )
+
+	where_clause = ''
+	if keys != '':
+		where_clause = 'WHERE ' + keys
+
+	c = conn.cursor()
+	c.execute('''SELECT id, rfid, hash, authorised FROM users '''+where_clause, values )
+	return [ user_dict(row) for row in c ]
+
+def get_users(conn):
+	return find_users(conn, {})
+
+def user_exists(conn, user):
+	return len(find_users(conn, user)) > 0
+
 def del_user(conn, user):
 	fields = [ (k,v,USER_TYPES[k]) for k,v in user.iteritems() if k in USER_FIELDS ]
 	values = tuple( t(v) for k,v,t in fields )
