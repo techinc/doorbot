@@ -33,51 +33,11 @@ class Doorbot(object):
 		self._door_io = door_io
 		self._timeout = None
 
+	# states
+
 	def set_state(self, state):
 		log.debug("state = %s", statenames[state]);
 		self._state = state
-
-	def denied(self):
-		self._door_io.denied()
-		self.await_rfid()
-
-	def pin_entered(self):
-		if self._state == AWAIT_PIN:
-			if self._pin == '999':
-				self.pinchange_old()
-			else:
-				user_data = userdb.verify_login(self._dbconn, self._rfid, self._pin)
-				if user_data != None:
-					log.info("Authentication successful")
-					log.debug("rfid = %s", user_data['rfid'])
-					self.do_open()
-				else:
-					log.info("Authentication failed")
-					self.denied()
-
-		elif self._state == PINCHANGE_OLD:
-			user_data = userdb.verify_login(self._dbconn, self._rfid, self._pin)
-			if user_data != None:
-				self.pinchange_new()
-			else:
-				self.denied()
-
-		elif self._state == PINCHANGE_NEW:
-			if len(self._pin) >= 4:
-				self.pinchange_verify()
-			else:
-				self.denied()
-
-		elif self._state == PINCHANGE_VERIFY:
-			if self._pin == self._orig_pin:
-				log.info("Changing pin")
-				userdb.update_pin(self._dbconn, self._rfid, self._pin)
-				self.await_rfid()
-				self._door_io.granted()
-			else:
-				self.denied()
-
-	# states
 
 	def open_mode(self):
 		self.set_state(OPEN_MODE)
@@ -144,6 +104,46 @@ class Doorbot(object):
 
 	# events
 
+	def denied(self):
+		self._door_io.denied()
+		self.await_rfid()
+
+	def pin_entered(self):
+		if self._state == AWAIT_PIN:
+			if self._pin == '999':
+				self.pinchange_old()
+			else:
+				user_data = userdb.verify_login(self._dbconn, self._rfid, self._pin)
+				if user_data != None:
+					log.info("Authentication successful")
+					log.debug("rfid = %s", user_data['rfid'])
+					self.do_open()
+				else:
+					log.info("Authentication failed")
+					self.denied()
+
+		elif self._state == PINCHANGE_OLD:
+			user_data = userdb.verify_login(self._dbconn, self._rfid, self._pin)
+			if user_data != None:
+				self.pinchange_new()
+			else:
+				self.denied()
+
+		elif self._state == PINCHANGE_NEW:
+			if len(self._pin) >= 4:
+				self.pinchange_verify()
+			else:
+				self.denied()
+
+		elif self._state == PINCHANGE_VERIFY:
+			if self._pin == self._orig_pin:
+				log.info("Changing pin")
+				userdb.update_pin(self._dbconn, self._rfid, self._pin)
+				self.await_rfid()
+				self._door_io.granted()
+			else:
+				self.denied()
+
 	def door_open(self):
 		log.info("door open")
 		if self._state not in (OPEN_MODE, OPEN, RELOCK):
@@ -208,6 +208,18 @@ class Doorbot(object):
 			self._pin = pin
 			self.pin_entered()
 
+	def reset_pin_command(self, rfid=None, pin=None):
+		self.reset_pin()
+		if rfid:
+			rfid = ''.join(c for c in rfid if c in '01')
+			self.rfid_scanned( rfid )
+		if pin:
+			pin = ''.join(c for c in pin if c in '0123456789' )
+			self._pin = pin
+			self.pin_entered()
+			self._pin = pin
+			self.pin_entered()
+
 	def print_users(self, out):
 		for row in userdb.get_users(self._dbconn):
 			out.write('{id} {rfid} {authorised}\n'.format(**row))
@@ -223,10 +235,14 @@ class Doorbot(object):
 		if command == 'addkey':
 			self.add_key_command(*args[1:3])
 		if command == 'delkey':
-			try:
-				userdb.del_user(self._dbconn, {'rfid':int(args[1])})
-			except ValueError:
-				log.error("bad id")
+			if len(args) >= 3:
+				if args[1] == 'rfid':
+					userdb.del_user(self._dbconn, {'rfid':args[1]})
+				elif command == 'id':
+					try:
+						userdb.del_user(self._dbconn, {'id':int(args[1])})
+					except ValueError:
+						log.error("bad id")
 		if command == 'openmode':
 			self.open_mode()
 		if command == 'authmode':
@@ -234,7 +250,7 @@ class Doorbot(object):
 		if command == 'show':
 			self.print_users(out)
 		if command == 'resetpin':
-			self.reset_pin()
+			self.reset_pin_command(*args[1:3])
 
 	def run(self):
 		self.await_rfid()
