@@ -104,6 +104,14 @@ class Doorbot(object):
 
 	# events
 
+	def door_open(self):
+		log.info("door open")
+		if self._state not in (OPEN_MODE, OPEN, RELOCK):
+			log.warning("unauthorized access??")
+
+	def door_closed(self):
+		log.info("door closed")
+
 	def denied(self):
 		self._door_io.denied()
 		self.await_rfid()
@@ -143,14 +151,6 @@ class Doorbot(object):
 				self._door_io.granted()
 			else:
 				self.denied()
-
-	def door_open(self):
-		log.info("door open")
-		if self._state not in (OPEN_MODE, OPEN, RELOCK):
-			log.warning("unauthorized access??")
-
-	def door_closed(self):
-		log.info("door closed")
 
 	def key_pressed(self, c):
 		log.debug("key pressed: %s", c)
