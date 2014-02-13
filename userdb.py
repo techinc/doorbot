@@ -43,7 +43,7 @@ def verify_login(conn, rfid, pin):
 	result = c.fetchall()
 
 	# prevent infoleak :-)
-	c.execute('''SELECT rfid, hash, authorised FROM users LIMIT 1''', (rfid,) )
+	c.execute('''SELECT rfid, hash, authorised FROM users LIMIT 1''' )
 	result_fake = c.fetchall()
 
 	if len(result) > 0:
@@ -56,7 +56,7 @@ def verify_login(conn, rfid, pin):
 		return None
 
 	if verify_hash(pin_hash, pin) and authorised:
-		return user_dict(row)
+		return user_dict(result[0])
 	else:
 		return None
 
@@ -93,11 +93,11 @@ def find_user(conn, rfid):
 
 def get_users(conn):
 	c = conn.cursor()
-	c.execute('''SELECT rfid, hash, authorised FROM users''', (rfid,) )
+	c.execute('''SELECT rfid, hash, authorised FROM users''')
 	return [ user_dict(row) for row in c ]
 
 def user_exists(conn, rfid):
-	return find_users(conn, rfid) != None
+	return find_user(conn, rfid) != None
 
 def del_user(conn, rfid):
 	c = conn.cursor()

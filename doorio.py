@@ -6,11 +6,12 @@ import re
 
 class DoorIO(object):
 
-	def __init__(self, auth_serial, lock_serial, cmd_in, cmd_out):
-		self._auth    = auth_serial
-		self._lock    = lock_serial
-		self._cmd_in  = cmd_in
-		self._cmd_out = cmd_out
+	def __init__(self, auth_serial, lock_serial, cmd_in=None, socket=None):
+		self._auth      = auth_serial
+		self._lock      = lock_serial
+		self._socklist  = []
+		self._cmd_in    = cmd_in
+		self._sock      = socket
 		self._led_state = "LED OFF"
 
 	def lock(self):
@@ -43,13 +44,64 @@ class DoorIO(object):
 		self._led_state = 'LED BLINK\n'
 		self.update_led()
 
+	def get_socket_line(self):
+		for pair in self._socklist:
+			s, data = pair
+			if data.find('\n') >= 0:
+				pair[1] = data[data.find('\n')+1:]
+				data = data[:data.find('\n')+1]
+				return data
+		else:
+			return None
+
+	def read_socket_data(self, r):
+		for pair in self._socklist:
+			s, data = pair
+			if s.fileno() in r:
+				try:
+					read_data = s.recv(1024)
+				except IOError:
+					read_data = ''
+
+				if read_data == '':
+					s.close()
+					self._socklist.remove(pair)
+				else:
+					pair[1] += read_data
+
+	def get_command(self, line):
+		cmd = line.rstrip('\r\n\0')
+
+		if cmd in ('addkey', 'openmode', 'authmode', 'resetpin'):
+			return { 'type' :  cmd,      'value' : '' }
+		else:
+			return { 'type' : 'unknown', 'value' : 'unknown command:'+cmd }
+
 	def get_event(self, timeout=None):
-		waitlist = [ f.fileno() for f in (self._auth, self._lock, self._cmd_in) ]
+		sockets = [ s for s,_ in self._socklist ]
+		waitlist = [ f.fileno() for f in sockets + [self._auth, self._lock, self._cmd_in, self._sock] if f != None ]
 		line = ''
+
+		line = self.get_socket_line()
+		if line != None:
+			return self.get_command(line)
+
 	   	r,w,x = select.select(waitlist, [], [], timeout)
 
 		if r == []:
 			return { 'type': 'timeout', 'value': timeout }
+
+		self.read_socket_data(r)
+		line = self.get_socket_line()
+		if line != None:
+			return self.get_command(line)
+
+		if self._cmd_in and self._cmd_in.fileno() in r:
+			return self.get_command(self._cmd_in.readline())
+
+		if self._sock.fileno() in r:
+			new_sock,_ = self._sock.accept()
+			self._socklist.append( [new_sock,''] )
 
 		if self._lock.fileno() in r:
 			line = self._lock.readline().rstrip('\r\n\0')
@@ -70,12 +122,5 @@ class DoorIO(object):
 
 			if line == 'RESET':
 				self.update_led()
-
-		if self._cmd_in.fileno() in r:
-			return {
-				'type': 'command',
-				'value': self._cmd_in.readline().rstrip('\r\n\0'),
-				'out': self._cmd_out
-			}
 
 		return { 'type' : 'unknown', 'value': line }

@@ -7,7 +7,10 @@ import userdb
 
 log = logging.getLogger("doorbot")
 
-AWAIT_RFID, AWAIT_PIN, OPEN, RELOCK, ADD_KEY, ADD_KEY_PIN_NEW, ADD_KEY_PIN_VERIFY, RESET_PIN, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY, OPEN_MODE = range(12)
+AWAIT_RFID, AWAIT_PIN, OPEN, RELOCK, \
+ADD_KEY, ADD_KEY_PIN_NEW, ADD_KEY_PIN_VERIFY, \
+RESET_PIN, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY, \
+OPEN_MODE = range(12)
 
 statenames = {
 	AWAIT_RFID          : 'AWAIT_RFID',
@@ -227,56 +230,6 @@ class Doorbot(object):
 		if self._state == OPEN:
 			self.relock()
 
-	def add_key_command(self, rfid=None, pin=None):
-		self.add_key()
-		if rfid:
-			rfid = ''.join(c for c in rfid if c in '01')
-			self.rfid_scanned( rfid )
-		if pin:
-			pin = ''.join(c for c in pin if c in '0123456789' )
-			self._pin = pin
-			self.pin_entered()
-			self._pin = pin
-			self.pin_entered()
-
-	def reset_pin_command(self, rfid=None, pin=None):
-		self.reset_pin()
-		if rfid:
-			rfid = ''.join(c for c in rfid if c in '01')
-			self.rfid_scanned( rfid )
-		if pin:
-			pin = ''.join(c for c in pin if c in '0123456789' )
-			self._pin = pin
-			self.pin_entered()
-			self._pin = pin
-			self.pin_entered()
-
-	def print_users(self, out):
-		for row in userdb.get_users(self._dbconn):
-			out.write('{rfid} {authorised}\n'.format(**row))
-
-	def execute_command(self, cmd, out):
-		if cmd == '':
-			return
-
-		log.info("%s", cmd)
-		args = cmd.split(' ')
-		command = args[0]
-
-		if command == 'addkey':
-			self.add_key_command(*args[1:3])
-		if command == 'delkey':
-			if len(args) >= 2:
-				userdb.del_user(self._dbconn, args[1])
-		if command == 'openmode':
-			self.open_mode()
-		if command == 'authmode':
-			self.relock()
-		if command == 'show':
-			self.print_users(out)
-		if command == 'resetpin':
-			self.reset_pin_command(*args[1:3])
-
 	def run(self):
 		self.await_rfid()
 		start = 0.
@@ -304,6 +257,12 @@ class Doorbot(object):
 				self.key_pressed(value)
 			elif t == 'rfid':
 				self.rfid_scanned(value)
-			elif t == 'command':
-				self.execute_command(value, event['out'])
+			elif t == 'addkey':
+				self.add_key()
+			elif t == 'openmode':
+				self.open_mode()
+			elif t == 'authmode':
+				self.relock()
+			elif t == 'resetpin':
+				self.reset_pin()
 
