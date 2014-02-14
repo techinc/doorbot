@@ -60,11 +60,14 @@ def verify_login(conn, rfid, pin):
 	else:
 		return None
 
-def add_user(conn, rfid, pin, authorised):
+def import_user(conn, rfid, pinhash, authorised):
 	c = conn.cursor()
 	c.execute('''INSERT INTO users (rfid, hash, authorised) VALUES (?,?,?)''',
-	          (rfid, create_hash(pin), int(authorised)) )
+	          (rfid, pinhash, int(authorised)) )
 	conn.commit()
+
+def add_user(conn, rfid, pin, authorised):
+	import_user(conn, rfid, create_hash(pin), authorised)
 
 def update_pin(conn, rfid, pin):
 	c = conn.cursor()
@@ -72,12 +75,12 @@ def update_pin(conn, rfid, pin):
 	          (create_hash(pin), rfid) )
 	conn.commit()
 
-def enable(conn, rfid, pin):
+def enable(conn, rfid):
 	c = conn.cursor()
 	c.execute('''UPDATE users SET authorised=1 WHERE rfid=?''', (rfid,))
 	conn.commit()
 
-def disable(conn, rfid, pin):
+def disable(conn, rfid):
 	c = conn.cursor()
 	c.execute('''UPDATE users SET authorised=0 WHERE rfid=?''', (rfid,))
 	conn.commit()
