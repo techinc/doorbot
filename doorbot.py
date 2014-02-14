@@ -126,6 +126,8 @@ class Doorbot(object):
 		log.info("door open")
 		if self._state not in (OPEN_MODE, OPEN, RELOCK):
 			log.warning("unauthorized access??")
+		if self._state == OPEN:
+			self.relock()
 
 	def door_closed(self):
 		log.info("door closed")
@@ -226,7 +228,7 @@ class Doorbot(object):
 	def timeout(self):
 		log.debug("timeout")
 		if self._state in (AWAIT_PIN, RELOCK, ADD_KEY, RESET_PIN, ADD_KEY_PIN_NEW, ADD_KEY_PIN_VERIFY, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY):
-			self.await_rfid()
+			self.denied()
 		if self._state == OPEN:
 			self.relock()
 
