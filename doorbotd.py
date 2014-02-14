@@ -22,13 +22,13 @@ import userdb
 #
 
 auth_dev = {
-	'dev'      : "/dev/ttyAUTH",
-	'baudrate' : 9600,
+    'dev'      : "/dev/ttyAUTH",
+    'baudrate' : 9600,
 }
 
 lock_dev = {
-	'dev'      : "/dev/ttyLOCK",
-	'baudrate' : 9600,
+    'dev'      : "/dev/ttyLOCK",
+    'baudrate' : 9600,
 }
 
 dbfile  = "user.db"
