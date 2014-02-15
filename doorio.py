@@ -10,6 +10,7 @@ class DoorIO(object):
         self._auth      = auth_serial
         self._lock      = lock_serial
         self._socklist  = []
+        self._rfidsocks = []
         self._cmd_in    = cmd_in
         self._sock      = socket
         self._led_state = "LED OFF"
@@ -44,13 +45,22 @@ class DoorIO(object):
         self._led_state = 'LED BLINK\n'
         self.update_led()
 
+    def socket_remove(self, s):
+        s.close()
+        self._socklist.remove(pair)
+        if s in self._rfidsocks:
+            self._rfidsocks.remove(s)
+
     def get_socket_line(self):
         for pair in self._socklist:
             s, data = pair
             if data.find('\n') >= 0:
                 pair[1] = data[data.find('\n')+1:]
                 data = data[:data.find('\n')+1]
-                return data
+                if data == 'rfidlisten':
+                    self._rfidsocks.append(s)
+                else:
+                    return data
         else:
             return None
 
@@ -64,10 +74,16 @@ class DoorIO(object):
                     read_data = ''
 
                 if read_data == '':
-                    s.close()
-                    self._socklist.remove(pair)
+                    self.socket_remove(s)
                 else:
                     pair[1] += read_data
+
+    def write_rfid(self):
+        for s in self._rfidsocks:
+            try:
+                s.send(code+'\n')
+            except IOError:
+                self.socket_remove(s)
 
     def get_command(self, line):
         cmd = line.rstrip('\r\n\0')
@@ -118,6 +134,7 @@ class DoorIO(object):
             if line.startswith("RFID "):
                 code = line.strip("RFID ")
                 if re.match("^[01]{34}$", code):
+                    self.write_rfid()
                     return { 'type': 'rfid', 'value': code }
 
             if line == 'RESET':

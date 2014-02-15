@@ -82,7 +82,7 @@ def enable(conn, rfid):
 def disable(conn, rfid):
     userdb.disable(conn, encode_rfid(rfid))
 
-sock_commands = ('addkey', 'openmode', 'authmode', 'resetpin')
+sock_commands = ('addkey', 'openmode', 'authmode', 'resetpin', 'rfidlisten')
 
 db_commands = collections.OrderedDict([
     ( 'initdb'       , (userdb.init_db, 0, '') ),
@@ -104,11 +104,14 @@ def usage():
         pre = "       "+sys.argv[0]
     sys.exit(1)
 
-def socket_command(command):
+def socket_command(command, close=True):
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     s.connect( (host, port) )
     s.send(command+'\n')
-    s.close()
+    if close:
+        s.close()
+    else:
+        return s
 
 if len(sys.argv) < 2:
     usage()
@@ -117,7 +120,11 @@ cmd = sys.argv[1]
 args = sys.argv[2:]
 
 if cmd in sock_commands:
-    socket_command(cmd)
+    if cmd == 'rfidlisten':
+        for line in socket_command(cmd, close = False).makefile():
+            print decode_rfid(line.rstrip('\n\r\0'))
+    else:
+        socket_command(cmd)
 elif cmd in db_commands:
     func, n_args, _ = db_commands[cmd]
     if len(args) != n_args:
