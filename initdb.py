@@ -7,7 +7,10 @@ import userdb
 def path_relative(name):
     return os.path.join(os.path.dirname(__file__), name)
 
-os.mkdir(path_relative("db"))
+try:
+    os.mkdir(path_relative("db"))
+except OSError:
+    pass
 
 dbfile  = path_relative("db/user.db")
 
