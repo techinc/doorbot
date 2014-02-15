@@ -24,7 +24,15 @@ dbfile  = path_relative("db/user.db")
 
 host, port = '::1', 4242
 
-def print_users(conn):
+conn = None
+
+def get_conn():
+    global conn
+    if conn == None:
+        conn = sqlite3.connect(dbfile)
+    return conn
+
+def list_users(conn):
     for row in userdb.get_users(conn):
         row['rfid'] = decode_rfid(row['rfid'])
         row['authorised'] = ('disabled','enabled')[int(row['authorised']==True)]
@@ -89,7 +97,7 @@ sock_commands = ('addkey', 'openmode', 'authmode', 'resetpin', 'rfidlisten', 'sh
 
 db_commands = collections.OrderedDict([
     ( 'initdb'       , (userdb.init_db, 0, '') ),
-    ( 'print'        , (print_users, 0, '') ),
+    ( 'list'         , (list_users, 0, '') ),
     ( 'export'       , (export_users, 0, '') ),
     ( 'import'       , (import_users, 0, ' < file') ),
     ( 'import-plain' , (import_plain, 0, ' < file') ),
@@ -128,8 +136,7 @@ def doorctl(cmd, *args):
         func, n_args, _ = db_commands[cmd]
         if len(args) != n_args:
             usage()
-        conn = sqlite3.connect(dbfile)
-        func(conn, *args)
+        func(get_conn(), *args)
 
 
 if __name__ == '__main__':
