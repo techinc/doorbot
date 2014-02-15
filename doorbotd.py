@@ -15,12 +15,8 @@ import doorio
 import recoverserial
 import userdb
 
-#
-# UDEV Rules:
-#
-# SUBSYSTEMS=="usb", KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="XXXXXXXX", SYMLINK+="ttyAUTH"
-# SUBSYSTEMS=="usb", KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="XXXXXXXX", SYMLINK+="ttyLOCK"
-#
+def path_relative(name):
+    return os.path.join(os.path.dirname(__file__), name)
 
 auth_dev = {
     'dev'      : "/dev/ttyAUTH",
@@ -32,9 +28,6 @@ lock_dev = {
     'baudrate' : 9600,
 }
 
-def path_relative(name):
-    return os.path.join(os.path.dirname(__file__), name)
-
 dbfile  = path_relative("user.db")
 logfile = path_relative("doorbot.log")
 
@@ -45,7 +38,6 @@ sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind( (bindhost, port) )
 sock.listen(5)
 
-#logging.basicConfig(filename=logfile, format="%(asctime)-15s: %(message)s", level=logging.DEBUG)
 logging.basicConfig(filename=logfile, format="%(asctime)-15s: %(message)s", level=logging.INFO)
 log = logging.getLogger("doorbotd")
 
@@ -55,17 +47,14 @@ conn = sqlite3.connect(dbfile)
 
 auth = recoverserial.RecoverSerial(auth_dev['dev'], auth_dev['baudrate'])
 lock = recoverserial.RecoverSerial(lock_dev['dev'], lock_dev['baudrate'])
-cmd_in = sys.stdin
 
 door_io = doorio.DoorIO(auth_serial=auth, lock_serial=lock, socket=sock)
-#door_io = doorio.DoorIO(auth_serial=auth, lock_serial=lock, cmd_in=cmd_in, socket=sock)
-
 doorbot = doorbot.Doorbot(conn, door_io)
 
 ret = doorbot.run()
 
 if (ret):
-    os.exit(0)
+    sys.exit(0)
 else:
-    os.exit(1)
+    sys.exit(1)
 

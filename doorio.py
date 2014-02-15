@@ -6,12 +6,11 @@ import re
 
 class DoorIO(object):
 
-    def __init__(self, auth_serial, lock_serial, cmd_in=None, socket=None):
+    def __init__(self, auth_serial, lock_serial, socket=None):
         self._auth      = auth_serial
         self._lock      = lock_serial
         self._socklist  = []
         self._rfidsocks = []
-        self._cmd_in    = cmd_in
         self._sock      = socket
         self._led_state = "LED OFF"
 
@@ -47,7 +46,9 @@ class DoorIO(object):
 
     def socket_remove(self, s):
         s.close()
-        self._socklist.remove(pair)
+        for pair in self._socklist:
+            if s == pair[0]:
+                self._socklist.remove(pair)
         if s in self._rfidsocks:
             self._rfidsocks.remove(s)
 
@@ -57,12 +58,9 @@ class DoorIO(object):
             if data.find('\n') >= 0:
                 pair[1] = data[data.find('\n')+1:]
                 data = data[:data.find('\n')+1]
-                if data == 'rfidlisten':
-                    self._rfidsocks.append(s)
-                else:
-                    return data
+                return s, data
         else:
-            return None
+            return None, None
 
     def read_socket_data(self, r):
         for pair in self._socklist:
@@ -78,29 +76,36 @@ class DoorIO(object):
                 else:
                     pair[1] += read_data
 
-    def write_rfid(self):
+    def write_rfid(self, code):
         for s in self._rfidsocks:
             try:
                 s.send(code+'\n')
             except IOError:
                 self.socket_remove(s)
 
-    def get_command(self, line):
+    def get_socket_command(self):
+        s, line = self.get_socket_line()
+        if line == None:
+            return None
+
         cmd = line.rstrip('\r\n\0')
+
+        if cmd == 'rfidlisten':
+            self._rfidsocks.append(s)
 
         if cmd in ('addkey', 'openmode', 'authmode', 'resetpin', 'shutdown', 'restart'):
             return { 'type' :  cmd,      'value' : '' }
         else:
-            return { 'type' : 'unknown', 'value' : 'unknown command:'+cmd }
+            return None
 
     def get_event(self, timeout=None):
         sockets = [ s for s,_ in self._socklist ]
-        waitlist = [ f.fileno() for f in sockets + [self._auth, self._lock, self._cmd_in, self._sock] if f != None ]
+        waitlist = [ f.fileno() for f in sockets + [self._auth, self._lock, self._sock] if f != None ]
         line = ''
 
-        line = self.get_socket_line()
-        if line != None:
-            return self.get_command(line)
+        cmd = self.get_socket_command()
+        if cmd != None:
+            return cmd
 
         r,w,x = select.select(waitlist, [], [], timeout)
 
@@ -108,12 +113,6 @@ class DoorIO(object):
             return { 'type': 'timeout', 'value': timeout }
 
         self.read_socket_data(r)
-        line = self.get_socket_line()
-        if line != None:
-            return self.get_command(line)
-
-        if self._cmd_in and self._cmd_in.fileno() in r:
-            return self.get_command(self._cmd_in.readline())
 
         if self._sock.fileno() in r:
             new_sock,_ = self._sock.accept()
@@ -134,7 +133,7 @@ class DoorIO(object):
             if line.startswith("RFID "):
                 code = line.strip("RFID ")
                 if re.match("^[01]{34}$", code):
-                    self.write_rfid()
+                    self.write_rfid(code)
                     return { 'type': 'rfid', 'value': code }
 
             if line == 'RESET':
