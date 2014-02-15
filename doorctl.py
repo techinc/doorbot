@@ -73,7 +73,6 @@ def import_plain(conn):
 
         users += [ (rfid, pin, authorised) ]
 
-    print [users]
     for rfid, pin, authorised in users:
         userdb.add_user(conn, rfid, pin, authorised)
 
