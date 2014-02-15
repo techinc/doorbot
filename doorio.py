@@ -88,7 +88,7 @@ class DoorIO(object):
     def get_command(self, line):
         cmd = line.rstrip('\r\n\0')
 
-        if cmd in ('addkey', 'openmode', 'authmode', 'resetpin'):
+        if cmd in ('addkey', 'openmode', 'authmode', 'resetpin', 'shutdown', 'restart'):
             return { 'type' :  cmd,      'value' : '' }
         else:
             return { 'type' : 'unknown', 'value' : 'unknown command:'+cmd }

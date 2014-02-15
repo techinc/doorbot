@@ -82,7 +82,7 @@ def enable(conn, rfid):
 def disable(conn, rfid):
     userdb.disable(conn, encode_rfid(rfid))
 
-sock_commands = ('addkey', 'openmode', 'authmode', 'resetpin', 'rfidlisten')
+sock_commands = ('addkey', 'openmode', 'authmode', 'resetpin', 'rfidlisten', 'shutdown', 'restart')
 
 db_commands = collections.OrderedDict([
     ( 'initdb'       , (userdb.init_db, 0, '') ),

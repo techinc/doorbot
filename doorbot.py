@@ -267,4 +267,8 @@ class Doorbot(object):
                 self.relock()
             elif t == 'resetpin':
                 self.reset_pin()
+            elif t == 'shutdown':
+                return True
+            elif t == 'restart':
+                return False
 

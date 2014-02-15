@@ -8,6 +8,7 @@ import sys
 import sqlite3
 import time
 import re
+import os
 
 import doorbot
 import doorio
@@ -57,5 +58,11 @@ door_io = doorio.DoorIO(auth_serial=auth, lock_serial=lock, socket=sock)
 #door_io = doorio.DoorIO(auth_serial=auth, lock_serial=lock, cmd_in=cmd_in, socket=sock)
 
 doorbot = doorbot.Doorbot(conn, door_io)
-doorbot.run()
+
+ret = doorbot.run()
+
+if (ret):
+    os.exit(0)
+else:
+    os.exit(1)
 
