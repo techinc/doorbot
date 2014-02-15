@@ -28,7 +28,7 @@ lock_dev = {
     'baudrate' : 9600,
 }
 
-dbfile  = path_relative("user.db")
+dbfile  = path_relative("db/user.db")
 logfile = path_relative("doorbot.log")
 
 bindhost, port = '::1', 4242

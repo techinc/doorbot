@@ -20,7 +20,7 @@ except ImportError:
 def path_relative(name):
     return os.path.join(os.path.dirname(__file__), name)
 
-dbfile  = path_relative("user.db")
+dbfile  = path_relative("db/user.db")
 
 host, port = '::1', 4242
 

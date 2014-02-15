@@ -227,8 +227,10 @@ class Doorbot(object):
 
     def timeout(self):
         log.debug("timeout")
-        if self._state in (AWAIT_PIN, RELOCK, ADD_KEY, RESET_PIN, ADD_KEY_PIN_NEW, ADD_KEY_PIN_VERIFY, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY):
+        if self._state in (AWAIT_PIN, ADD_KEY, RESET_PIN, ADD_KEY_PIN_NEW, ADD_KEY_PIN_VERIFY, PINCHANGE_OLD, PINCHANGE_NEW, PINCHANGE_VERIFY):
             self.denied()
+        if self._state == RELOCK:
+			self.await_rfid()
         if self._state == OPEN:
             self.relock()
 
