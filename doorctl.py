@@ -5,6 +5,7 @@ import re
 import socket
 import sqlite3
 import sys
+import os
 
 import userdb
 
@@ -16,7 +17,10 @@ except ImportError:
     def decode_rfid(rfid):
         return rfid
 
-dbfile  = "user.db"
+def path_relative(name):
+    return os.path.join(os.path.dirname(__file__), name)
+
+dbfile  = path_relative("user.db")
 
 host, port = '::1', 4242
 
@@ -113,22 +117,25 @@ def socket_command(command, close=True):
     else:
         return s
 
-if len(sys.argv) < 2:
-    usage()
+def doorctl(cmd, *args):
 
-cmd = sys.argv[1]
-args = sys.argv[2:]
+    if cmd in sock_commands:
+        if cmd == 'rfidlisten':
+            for line in socket_command(cmd, close = False).makefile():
+                print decode_rfid(line.rstrip('\n\r\0'))
+        else:
+            socket_command(cmd)
+    elif cmd in db_commands:
+        func, n_args, _ = db_commands[cmd]
+        if len(args) != n_args:
+            usage()
+        conn = sqlite3.connect(dbfile)
+        func(conn, *args)
 
-if cmd in sock_commands:
-    if cmd == 'rfidlisten':
-        for line in socket_command(cmd, close = False).makefile():
-            print decode_rfid(line.rstrip('\n\r\0'))
-    else:
-        socket_command(cmd)
-elif cmd in db_commands:
-    func, n_args, _ = db_commands[cmd]
-    if len(args) != n_args:
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
         usage()
-    conn = sqlite3.connect(dbfile)
-    func(conn, *args)
+
+    doorctl(*sys.argv[1:])
 

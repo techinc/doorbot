@@ -32,8 +32,11 @@ lock_dev = {
     'baudrate' : 9600,
 }
 
-dbfile  = "user.db"
-logfile = "doorbot.log"
+def path_relative(name):
+    return os.path.join(os.path.dirname(__file__), name)
+
+dbfile  = path_relative("user.db")
+logfile = path_relative("doorbot.log")
 
 bindhost, port = '::1', 4242
 
