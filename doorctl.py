@@ -35,7 +35,9 @@ def get_conn():
     return conn
 
 def list_users():
-    for row in userdb.get_users(get_conn()):
+    users = userdb.get_users(get_conn())
+    users.sort(key=lambda x:x['rfid'])
+    for row in users:
         row['rfid'] = decode_rfid(row['rfid'])
         row['authorised'] = ('disabled','enabled')[int(row['authorised']==True)]
         sys.stdout.write('{rfid} {authorised}\n'.format(**row))
