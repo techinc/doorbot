@@ -33,7 +33,7 @@ class DoorShell(cmd.Cmd):
     def do_addkey(self, arg):
         """addkey [<fobid> <pin>]"""
         args = arg.strip(' ').rstrip(' ').split(' ')
-        if len(args) == 0:
+        if args[0] == '':
             doorctl.socket_command('addkey')
         elif len(args) == 2:
             try:
@@ -55,7 +55,7 @@ class DoorShell(cmd.Cmd):
     def do_resetpin(self, arg):
         """resetpin [<fobid> <pin>]"""
         args = arg.strip(' ').rstrip(' ').split(' ')
-        if len(args) == 0:
+        if args[0] == '':
             doorctl.socket_command('resetpin')
         elif len(args) == 2:
             try:
