@@ -10,8 +10,10 @@ import os
 import userdb
 
 try:
-    from rfidconv import encode_rfid, decode_rfid
+    from rfidconv import valid_rfid, encode_rfid, decode_rfid
 except ImportError:
+    def valid_rfid(rfid):
+        return True
     def encode_rfid(rfid):
         return rfid
     def decode_rfid(rfid):
@@ -20,7 +22,7 @@ except ImportError:
 def path_relative(name):
     return os.path.join(os.path.dirname(__file__), name)
 
-dbfile  = path_relative("db/user.db")
+dbfile = path_relative("db/user.db")
 
 host, port = '::1', 4242
 
@@ -32,66 +34,94 @@ def get_conn():
         conn = sqlite3.connect(dbfile)
     return conn
 
-def list_users(conn):
-    for row in userdb.get_users(conn):
+def list_users():
+    for row in userdb.get_users(get_conn()):
         row['rfid'] = decode_rfid(row['rfid'])
         row['authorised'] = ('disabled','enabled')[int(row['authorised']==True)]
         sys.stdout.write('{rfid} {authorised}\n'.format(**row))
 
-def export_users(conn):
-    for row in userdb.get_users(conn):
+def export_users():
+    for row in userdb.get_users(get_conn()):
         row['rfid'] = decode_rfid(row['rfid'])
         sys.stdout.write('{rfid} {authorised} {hash}\n'.format(**row))
 
-def import_users(conn):
-    users = []
-    for line in sys.stdin:
-        line = line.rstrip('\n\r\0')
-        fields = line.split(' ')
-        if len(fields) != 3:
-            raise ValueError("bad input")
+def change_pin(rfid, pin):
 
-        rfid = encode_rfid(fields[0])
-        authorised = int(fields[1])
-        if not 0 <= authorised <= 1:
-            raise ValueError("bad authorised value")
-        pinhash = fields[2]
-        if not re.match("^[0-9a-fA-F]*$", pinhash):
-            raise ValueError("bad pin hash")
-        users += [ (rfid, pinhash, authorised) ]
+    dbrfid = encode_rfid(rfid)
 
-    for rfid, pinhash, authorised in users:
-        userdb.import_user(conn, rfid, pinhash, authorised)
+    if not re.match("^[0-9]*$", pin):
+        raise ValueError("bad pin")
 
-def import_plain(conn):
-    users = []
-    for line in sys.stdin:
-        line = line.rstrip('\n\r\0')
-        fields = line.split(' ')
-        if len(fields) != 3:
-            raise ValueError("bad input")
+    if not userdb.update_pin(get_conn(), dbrfid, pin):
+        raise ValueError("fob {0} does not exists".format(rfid))
 
-        rfid = encode_rfid(fields[0])
-        authorised = int(fields[1])
-        if not 0 <= authorised <= 1:
-            raise ValueError("bad authorised value")
-        pin = fields[2]
+
+def import_user(rfid, authorised, pin, plain=False):
+
+    dbrfid = encode_rfid(rfid)
+
+    if authorised not in '01':
+        raise ValueError("bad authorised field")
+
+    if plain:
         if not re.match("^[0-9]*$", pin):
             raise ValueError("bad pin")
 
-        users += [ (rfid, pin, authorised) ]
+        func = userdb.add_user
+    else:
+        if not re.match("^[0-9a-fA-F]*$", pin):
+            raise ValueError("bad pin hash")
 
-    for rfid, pin, authorised in users:
-        userdb.add_user(conn, rfid, pin, authorised)
+        func = userdb.import_user
 
-def delete(conn, rfid):
-    userdb.del_user(conn, encode_rfid(rfid))
+    if not func(get_conn(), dbrfid, pin, int(authorised)):
+        raise ValueError("fob {0} already exists".format(rfid))
 
-def enable(conn, rfid):
-    userdb.enable(conn, encode_rfid(rfid))
+def import_users(plain=False):
+    for line in sys.stdin:
+        line = line.rstrip('\n\r\0')
+        fields = line.split(' ')
+        try:
+            if len(fields) != 3:
+                raise ValueError("bad input")
 
-def disable(conn, rfid):
-    userdb.disable(conn, encode_rfid(rfid))
+            rfid, authorised, pin = fields
+            import_user(rfid, authorised, pin)
+
+            print "fob {0} imported".format(rfid)
+
+        except ValueError as e:
+            print str(e)
+
+def import_plain():
+    import_users(plain=True)
+
+def delete(rfid):
+    if valid_rfid(rfid):
+        if userdb.del_user(get_conn(), encode_rfid(rfid)):
+            print "fob deleted"
+        else:
+            print "fob not in the system"
+    else:
+        print "bad fob code {0}".format(rfid)
+
+def enable(rfid):
+    if valid_rfid(rfid):
+        if userdb.enable(get_conn(), encode_rfid(rfid)):
+            print "fob enabled"
+        else:
+            print "fob not in the system"
+    else:
+        print "bad fob code {0}".format(rfid)
+
+def disable(rfid):
+    if valid_rfid(rfid):
+        if userdb.disable(get_conn(), encode_rfid(rfid)):
+            print "fob disabled"
+        else:
+            print "fob not in the system"
+    else:
+        print "bad fob code {0}".format(rfid)
 
 sock_commands = ('addkey', 'openmode', 'authmode', 'resetpin', 'rfidlisten', 'shutdown', 'restart')
 
@@ -136,7 +166,7 @@ def doorctl(cmd, *args):
         func, n_args, _ = db_commands[cmd]
         if len(args) != n_args:
             usage()
-        func(get_conn(), *args)
+        func(*args)
 
 
 if __name__ == '__main__':

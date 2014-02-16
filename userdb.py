@@ -62,28 +62,35 @@ def verify_login(conn, rfid, pin):
 
 def import_user(conn, rfid, pinhash, authorised):
     c = conn.cursor()
-    c.execute('''INSERT INTO users (rfid, hash, authorised) VALUES (?,?,?)''',
-              (rfid, pinhash, int(authorised)) )
-    conn.commit()
+    try:
+        c.execute('''INSERT INTO users (rfid, hash, authorised) VALUES (?,?,?)''',
+                  (rfid, pinhash, int(authorised)) )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return False
+    return c.rowcount != 0
 
 def add_user(conn, rfid, pin, authorised):
-    import_user(conn, rfid, create_hash(pin), authorised)
+    return import_user(conn, rfid, create_hash(pin), authorised)
 
 def update_pin(conn, rfid, pin):
     c = conn.cursor()
     c.execute('''UPDATE users SET hash=? WHERE rfid=?''',
               (create_hash(pin), rfid) )
     conn.commit()
+    return c.rowcount != 0
 
 def enable(conn, rfid):
     c = conn.cursor()
     c.execute('''UPDATE users SET authorised=1 WHERE rfid=?''', (rfid,))
     conn.commit()
+    return c.rowcount != 0
 
 def disable(conn, rfid):
     c = conn.cursor()
     c.execute('''UPDATE users SET authorised=0 WHERE rfid=?''', (rfid,))
     conn.commit()
+    return c.rowcount != 0
 
 def find_user(conn, rfid):
     c = conn.cursor()
@@ -106,4 +113,5 @@ def del_user(conn, rfid):
     c = conn.cursor()
     c.execute('''DELETE FROM users WHERE rfid=?''', (rfid,) )
     conn.commit()
+    return c.rowcount
 
