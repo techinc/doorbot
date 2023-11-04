@@ -32,6 +32,11 @@
 #define ALARM_PIN (6)
 #define LED_PIN   (7)
 
+#define KEYPAD_ON     ('G') /* green animation */
+#define KEYPAD_OFF    ('S') /* red 'sleep' animation */
+#define KEYPAD_BLINK  ('P') /* color wheel 'party' animation */
+#define KEYPAD_DENIED ('R') /* red animation */
+
 #define DATA0_PIN (2) /* cannot change, depends on INT0 */
 #define DATA1_PIN (3) /* cannot change, depends on INT1 */
 
@@ -76,6 +81,7 @@ void granted_beep(void)
 
 void denied_beep(void)
 {
+	keypad.write(KEYPAD_DENIED);
 	for (int i=0; i<100; i++)
 	{
 		delay(4);
@@ -83,6 +89,27 @@ void denied_beep(void)
 		delay(4);
 		digitalWrite(ALARM_PIN, HIGH);
 	}
+}
+
+
+void led_on(void)
+{
+	led_mode = ON;
+	keypad.write(KEYPAD_ON);
+}
+
+
+void led_off(void)
+{
+	led_mode = OFF;
+	keypad.write(KEYPAD_OFF);
+}
+
+
+void led_blink(void)
+{
+	led_mode = BLINK;
+	keypad.write(KEYPAD_BLINK);
 }
 
 /*
@@ -222,13 +249,13 @@ void command_poll()
 				short_beep();
 
 			else if ( strcmp(command, "LED ON") == 0 )
-				led_mode = ON;
+				led_on();
 
 			else if ( strcmp(command, "LED OFF") == 0 )
-				led_mode = OFF;
+				led_off();
 
 			else if ( strcmp(command, "LED BLINK") == 0 )
-				led_mode = BLINK;
+				led_blink();
 
 			command_len = 0;
 		}
@@ -259,6 +286,7 @@ void setup(void)
 	Serial.begin(9600);
 	Serial.println("RESET");
 	rfid_init();
+	led_off();
 }
 
 void loop(void)
@@ -272,4 +300,3 @@ void loop(void)
 		led_update();
 	}
 }
-
