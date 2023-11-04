@@ -181,15 +181,27 @@ void rfid_init(void)
  * Read PIN pad
  */
 
+int last_key = -1;
+unsigned long last_key_time;
+
 int key_poll(void)
 {
 	int c = keypad.read();
+
+	if (cur-last_key_time > 300)
+		last_key = -1;
 
 	if (c == -1)
 		return 0;
  
 	if ( ( (c < '0') || (c > '9') ) && (c != 'C') && (c != 'B') )
 		return 0;
+
+	if (last_key != -1)
+		return 0;
+
+	last_key_time = cur;
+	last_key = c;
 
 	Serial.print("KEY ");
 	Serial.println((char)c);
