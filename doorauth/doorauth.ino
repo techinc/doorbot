@@ -1,4 +1,4 @@
-/*
+  /*
  * Copyright (c) 2013 Erik Bosman <erik@minemu.org>
  *
  * Permission  is  hereby  granted,  free  of  charge,  to  any  person
@@ -32,9 +32,9 @@
 #define ALARM_PIN (6)
 #define LED_PIN   (7)
 
-#define KEYPAD_ON     ('G') /* green animation */
+#define KEYPAD_ON     ('P') /* color wheel 'party' animation */
 #define KEYPAD_OFF    ('S') /* red 'sleep' animation */
-#define KEYPAD_BLINK  ('P') /* color wheel 'party' animation */
+#define KEYPAD_BLINK  ('G') /* green animation */
 #define KEYPAD_DENIED ('R') /* red animation */
 
 #define DATA0_PIN (2) /* cannot change, depends on INT0 */
